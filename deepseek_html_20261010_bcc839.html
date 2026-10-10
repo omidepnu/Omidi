@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>جدول تناوبی عناصر - با ایزوتوپ‌ها و فراوانی</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Arial, sans-serif; }
+
+body {
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    color: #fff;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+header { text-align: center; margin-bottom: 30px; }
+
+h1 {
+    font-size: 2.2rem;
+    background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+}
+
+.subtitle { color: #9aa0b5; font-size: 0.95rem; margin-bottom: 20px; }
+
+.search-box { max-width: 500px; margin: 0 auto; }
+
+.search-box input {
+    width: 100%;
+    padding: 12px 20px;
+    border-radius: 30px;
+    border: 2px solid rgba(0, 212, 255, 0.3);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.3s;
+}
+
+.search-box input:focus {
+    border-color: #00d4ff;
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+}
+
+.periodic-table {
+    display: grid;
+    grid-template-columns: repeat(18, 1fr);
+    gap: 4px;
+    max-width: 1400px;
+    margin: 0 auto;
+    direction: ltr;
+}
+
+.element-card {
+    aspect-ratio: 1;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    min-width: 0;
+}
+
+.element-card:hover {
+    transform: scale(1.12);
+    z-index: 10;
+    box-shadow: 0 0 25px rgba(0, 212, 255, 0.5);
+    border-color: #00d4ff;
+}
+
+.element-card .atomic-number { font-size: 0.65rem; color: #9aa0b5; position: absolute; top: 4px; left: 6px; }
+.element-card .symbol { font-size: 1.3rem; font-weight: 700; line-height: 1; }
+.element-card .name { font-size: 0.55rem; color: #c0c5d4; text-align: center; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+.element-card[data-category="nonmetal"] { background: rgba(0, 212, 255, 0.2); }
+.element-card[data-category="noble-gas"] { background: rgba(155, 89, 182, 0.25); }
+.element-card[data-category="alkali-metal"] { background: rgba(231, 76, 60, 0.25); }
+.element-card[data-category="alkaline-earth-metal"] { background: rgba(230, 126, 34, 0.25); }
+.element-card[data-category="metalloid"] { background: rgba(241, 196, 15, 0.2); }
+.element-card[data-category="halogen"] { background: rgba(46, 204, 113, 0.2); }
+.element-card[data-category="transition-metal"] { background: rgba(52, 152, 219, 0.2); }
+.element-card[data-category="post-transition-metal"] { background: rgba(26, 188, 156, 0.2); }
+.element-card[data-category="lanthanide"] { background: rgba(255, 107, 129, 0.2); }
+.element-card[data-category="actinide"] { background: rgba(255, 159, 67, 0.2); }
+.element-card[data-category="unknown"] { background: rgba(149, 165, 166, 0.2); }
+
+.empty-slot { aspect-ratio: 1; }
+
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000; backdrop-filter: blur(5px);
+}
+
+.modal.hidden { display: none; }
+
+.modal-content {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid rgba(0, 212, 255, 0.3);
+    box-shadow: 0 0 60px rgba(0, 212, 255, 0.2);
+}
+
+.close-btn {
+    position: absolute; top: 15px; left: 20px;
+    font-size: 2rem; cursor: pointer; color: #9aa0b5;
+    transition: color 0.3s;
+}
+
+.close-btn:hover { color: #00d4ff; }
+
+.modal-header { display: flex; align-items: center; gap: 20px; margin-bottom: 25px; direction: ltr; }
+
+.modal-symbol-box {
+    width: 90px; height: 90px; border-radius: 15px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    font-weight: 700;
+}
+
+.modal-symbol-box .big-symbol { font-size: 2.5rem; line-height: 1; }
+.modal-symbol-box .big-number { font-size: 0.9rem; color: #9aa0b5; }
+
+.modal-title { flex: 1; direction: rtl; text-align: right; }
+.modal-title h2 { font-size: 1.8rem; margin-bottom: 5px; }
+.modal-title .atomic-mass { color: #00d4ff; font-size: 1rem; }
+
+.info-section { margin-bottom: 20px; }
+.info-section h3 {
+    color: #00d4ff; margin-bottom: 12px; font-size: 1.1rem;
+    border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+    padding-bottom: 6px;
+}
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.info-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 10px 14px; border-radius: 10px;
+    display: flex; justify-content: space-between;
+    direction: rtl;
+}
+
+.info-item .label { color: #9aa0b5; font-size: 0.9rem; }
+.info-item .value { font-weight: 600; color: #fff; font-size: 0.9rem; direction: ltr; }
+
+.isotope-table { width: 100%; border-collapse: collapse; direction: ltr; font-size: 0.9rem; }
+.isotope-table th { background: rgba(0, 212, 255, 0.15); padding: 10px; text-align: center; color: #00d4ff; font-weight: 600; }
+.isotope-table td { padding: 8px 10px; text-align: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.isotope-table tr:hover { background: rgba(255, 255, 255, 0.05); }
+
+.abundance-bar { width: 100%; height: 6px; background: rgba(255, 255, 255, 0.1); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.abundance-bar-fill { height: 100%; background: linear-gradient(90deg, #00d4ff, #7b2ff7); border-radius: 3px; }
+
+@media (max-width: 900px) {
+    .periodic-table { gap: 2px; }
+    .element-card .symbol { font-size: 1rem; }
+    .element-card .name { font-size: 0.45rem; }
+    .modal-content { padding: 20px; }
+    .info-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 1.5rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+    <h1>جدول تناوبی عناصر</h1>
+    <p class="subtitle">شامل اطلاعات کامل، ایزوتوپ‌ها و فراوانی طبیعی</p>
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="جستجو بر اساس نام، نماد یا عدد اتمی...">
+    </div>
+</header>
+
+<main>
+    <div id="periodicTable" class="periodic-table"></div>
+</main>
+
+<div id="modal" class="modal hidden">
+    <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <div id="modalBody"></div>
+    </div>
+</div>
+
+<script>
+const elementsData = [
+    { number: 1, symbol: "H", name: "Hydrogen", nameFa: "هیدروژن", mass: 1.008, category: "nonmetal", group: 1, period: 1, block: "s", electronConfig: "1s¹", electronegativity: 2.20, density: 0.00008988, meltingPoint: 14.01, boilingPoint: 20.28, phase: "gas", abundance: { crust: 1400, universe: 75 }, isotopes: [{ massNumber: 1, abundance: 99.985 }, { massNumber: 2, abundance: 0.015 }] },
+    { number: 2, symbol: "He", name: "Helium", nameFa: "هلیوم", mass: 4.0026, category: "noble-gas", group: 18, period: 1, block: "s", electronConfig: "1s²", electronegativity: null, density: 0.0001785, meltingPoint: 0.95, boilingPoint: 4.22, phase: "gas", abundance: { crust: 0.008, universe: 23 }, isotopes: [{ massNumber: 3, abundance: 0.000137 }, { massNumber: 4, abundance: 99.999863 }] },
+    { number: 3, symbol: "Li", name: "Lithium", nameFa: "لیتیم", mass: 6.94, category: "alkali-metal", group: 1, period: 2, block: "s", electronConfig: "[He] 2s¹", electronegativity: 0.98, density: 0.534, meltingPoint: 453.69, boilingPoint: 1560, phase: "solid", abundance: { crust: 20, sea: 0.18 }, isotopes: [{ massNumber: 6, abundance: 7.59 }, { massNumber: 7, abundance: 92.41 }] },
+    { number: 4, symbol: "Be", name: "Beryllium", nameFa: "بریلیم", mass: 9.0122, category: "alkaline-earth-metal", group: 2, period: 2, block: "s", electronConfig: "[He] 2s²", electronegativity: 1.57, density: 1.85, meltingPoint: 1560, boilingPoint: 2742, phase: "solid", abundance: { crust: 2.8, sea: 0.0000006 }, isotopes: [{ massNumber: 9, abundance: 100 }] },
+    { number: 5, symbol: "B", name: "Boron", nameFa: "بور", mass: 10.81, category: "metalloid", group: 13, period: 2, block: "p", electronConfig: "[He] 2s² 2p¹", electronegativity: 2.04, density: 2.34, meltingPoint: 2349, boilingPoint: 4200, phase: "solid", abundance: { crust: 10, sea: 4.44 }, isotopes: [{ massNumber: 10, abundance: 19.9 }, { massNumber: 11, abundance: 80.1 }] },
+    { number: 6, symbol: "C", name: "Carbon", nameFa: "کربن", mass: 12.011, category: "nonmetal", group: 14, period: 2, block: "p", electronConfig: "[He] 2s² 2p²", electronegativity: 2.55, density: 2.267, meltingPoint: 3823, boilingPoint: 4300, phase: "solid", abundance: { crust: 200, universe: 0.5 }, isotopes: [{ massNumber: 12, abundance: 98.9 }, { massNumber: 13, abundance: 1.1 }] },
+    { number: 7, symbol: "N", name: "Nitrogen", nameFa: "نیتروژن", mass: 14.007, category: "nonmetal", group: 15, period: 2, block: "p", electronConfig: "[He] 2s² 2p³", electronegativity: 3.04, density: 0.0012506, meltingPoint: 63.15, boilingPoint: 77.36, phase: "gas", abundance: { crust: 19, universe: 0.1 }, isotopes: [{ massNumber: 14, abundance: 99.63 }, { massNumber: 15, abundance: 0.37 }] },
+    { number: 8, symbol: "O", name: "Oxygen", nameFa: "اکسیژن", mass: 15.999, category: "nonmetal", group: 16, period: 2, block: "p", electronConfig: "[He] 2s² 2p⁴", electronegativity: 3.44, density: 0.001429, meltingPoint: 54.36, boilingPoint: 90.20, phase: "gas", abundance: { crust: 461000, universe: 1 }, isotopes: [{ massNumber: 16, abundance: 99.76 }, { massNumber: 17, abundance: 0.04 }, { massNumber: 18, abundance: 0.20 }] },
+    { number: 9, symbol: "F", name: "Fluorine", nameFa: "فلوئور", mass: 18.998, category: "halogen", group: 17, period: 2, block: "p", electronConfig: "[He] 2s² 2p⁵", electronegativity: 3.98, density: 0.001696, meltingPoint: 53.53, boilingPoint: 85.03, phase: "gas", abundance: { crust: 585, sea: 1.3 }, isotopes: [{ massNumber: 19, abundance: 100 }] },
+    { number: 10, symbol: "Ne", name: "Neon", nameFa: "نئون", mass: 20.180, category: "noble-gas", group: 18, period: 2, block: "p", electronConfig: "[He] 2s² 2p⁶", electronegativity: null, density: 0.0008999, meltingPoint: 24.56, boilingPoint: 27.07, phase: "gas", abundance: { crust: 0.005, universe: 0.13 }, isotopes: [{ massNumber: 20, abundance: 90.48 }, { massNumber: 21, abundance: 0.27 }, { massNumber: 22, abundance: 9.25 }] },
+    { number: 11, symbol: "Na", name: "Sodium", nameFa: "سدیم", mass: 22.990, category: "alkali-metal", group: 1, period: 3, block: "s", electronConfig: "[Ne] 3s¹", electronegativity: 0.93, density: 0.968, meltingPoint: 370.87, boilingPoint: 1156, phase: "solid", abundance: { crust: 23600, sea: 10800 }, isotopes: [{ massNumber: 23, abundance: 100 }] },
+    { number: 12, symbol: "Mg", name: "Magnesium", nameFa: "منیزیم", mass: 24.305, category: "alkaline-earth-metal", group: 2, period: 3, block: "s", electronConfig: "[Ne] 3s²", electronegativity: 1.31, density: 1.738, meltingPoint: 923, boilingPoint: 1363, phase: "solid", abundance: { crust: 23300, sea: 1290 }, isotopes: [{ massNumber: 24, abundance: 78.99 }, { massNumber: 25, abundance: 10.00 }, { massNumber: 26, abundance: 11.01 }] },
+    { number: 13, symbol: "Al", name: "Aluminium", nameFa: "آلومینیوم", mass: 26.982, category: "post-transition-metal", group: 13, period: 3, block: "p", electronConfig: "[Ne] 3s² 3p¹", electronegativity: 1.61, density: 2.70, meltingPoint: 933.47, boilingPoint: 2792, phase: "solid", abundance: { crust: 82300, sea: 0.002 }, isotopes: [{ massNumber: 27, abundance: 100 }] },
+    { number: 14, symbol: "Si", name: "Silicon", nameFa: "سیلیسیم", mass: 28.085, category: "metalloid", group: 14, period: 3, block: "p", electronConfig: "[Ne] 3s² 3p²", electronegativity: 1.90, density: 2.3296, meltingPoint: 1687, boilingPoint: 3538, phase: "solid", abundance: { crust: 282000, sea: 2.2 }, isotopes: [{ massNumber: 28, abundance: 92.23 }, { massNumber: 29, abundance: 4.67 }, { massNumber: 30, abundance: 3.10 }] },
+    { number: 15, symbol: "P", name: "Phosphorus", nameFa: "فسفر", mass: 30.974, category: "nonmetal", group: 15, period: 3, block: "p", electronConfig: "[Ne] 3s² 3p³", electronegativity: 2.19, density: 1.82, meltingPoint: 317.30, boilingPoint: 550, phase: "solid", abundance: { crust: 1050, sea: 0.06 }, isotopes: [{ massNumber: 31, abundance: 100 }] },
+    { number: 16, symbol: "S", name: "Sulfur", nameFa: "گوگرد", mass: 32.06, category: "nonmetal", group: 16, period: 3, block: "p", electronConfig: "[Ne] 3s² 3p⁴", electronegativity: 2.58, density: 2.067, meltingPoint: 388.36, boilingPoint: 717.87, phase: "solid", abundance: { crust: 350, sea: 905 }, isotopes: [{ massNumber: 32, abundance: 94.99 }, { massNumber: 33, abundance: 0.75 }, { massNumber: 34, abundance: 4.25 }, { massNumber: 36, abundance: 0.01 }] },
+    { number: 17, symbol: "Cl", name: "Chlorine", nameFa: "کلر", mass: 35.45, category: "halogen", group: 17, period: 3, block: "p", electronConfig: "[Ne] 3s² 3p⁵", electronegativity: 3.16, density: 0.003214, meltingPoint: 171.6, boilingPoint: 239.11, phase: "gas", abundance: { crust: 145, sea: 19400 }, isotopes: [{ massNumber: 35, abundance: 75.77 }, { massNumber: 37, abundance: 24.23 }] },
+    { number: 18, symbol: "Ar", name: "Argon", nameFa: "آرگون", mass: 39.948, category: "noble-gas", group: 18, period: 3, block: "p", electronConfig: "[Ne] 3s² 3p⁶", electronegativity: null, density: 0.0017837, meltingPoint: 83.80, boilingPoint: 87.30, phase: "gas", abundance: { crust: 3.5, sea: 0.45 }, isotopes: [{ massNumber: 36, abundance: 0.3365 }, { massNumber: 38, abundance: 0.0632 }, { massNumber: 40, abundance: 99.6003 }] },
+    { number: 19, symbol: "K", name: "Potassium", nameFa: "پتاسیم", mass: 39.098, category: "alkali-metal", group: 1, period: 4, block: "s", electronConfig: "[Ar] 4s¹", electronegativity: 0.82, density: 0.862, meltingPoint: 336.53, boilingPoint: 1032, phase: "solid", abundance: { crust: 20900, sea: 399 }, isotopes: [{ massNumber: 39, abundance: 93.2581 }, { massNumber: 40, abundance: 0.0117 }, { massNumber: 41, abundance: 6.7302 }] },
+    { number: 20, symbol: "Ca", name: "Calcium", nameFa: "کلسیم", mass: 40.078, category: "alkaline-earth-metal", group: 2, period: 4, block: "s", electronConfig: "[Ar] 4s²", electronegativity: 1.00, density: 1.54, meltingPoint: 1115, boilingPoint: 1757, phase: "solid", abundance: { crust: 41500, sea: 412 }, isotopes: [{ massNumber: 40, abundance: 96.941 }, { massNumber: 42, abundance: 0.647 }, { massNumber: 43, abundance: 0.135 }, { massNumber: 44, abundance: 2.086 }, { massNumber: 46, abundance: 0.004 }, { massNumber: 48, abundance: 0.187 }] },
+    { number: 21, symbol: "Sc", name: "Scandium", nameFa: "اسکاندیم", mass: 44.956, category: "transition-metal", group: 3, period: 4, block: "d", electronConfig: "[Ar] 3d¹ 4s²", electronegativity: 1.36, density: 2.99, meltingPoint: 1814, boilingPoint: 3109, phase: "solid", abundance: { crust: 22, sea: 0.0000015 }, isotopes: [{ massNumber: 45, abundance: 100 }] },
+    { number: 22, symbol: "Ti", name: "Titanium", nameFa: "تیتانیوم", mass: 47.867, category: "transition-metal", group: 4, period: 4, block: "d", electronConfig: "[Ar] 3d² 4s²", electronegativity: 1.54, density: 4.54, meltingPoint: 1941, boilingPoint: 3560, phase: "solid", abundance: { crust: 5650, sea: 0.001 }, isotopes: [{ massNumber: 46, abundance: 8.25 }, { massNumber: 47, abundance: 7.44 }, { massNumber: 48, abundance: 73.72 }, { massNumber: 49, abundance: 5.41 }, { massNumber: 50, abundance: 5.18 }] },
+    { number: 23, symbol: "V", name: "Vanadium", nameFa: "وانادیم", mass: 50.942, category: "transition-metal", group: 5, period: 4, block: "d", electronConfig: "[Ar] 3d³ 4s²", electronegativity: 1.63, density: 6.11, meltingPoint: 2183, boilingPoint: 3680, phase: "solid", abundance: { crust: 120, sea: 0.0025 }, isotopes: [{ massNumber: 50, abundance: 0.250 }, { massNumber: 51, abundance: 99.750 }] },
+    { number: 24, symbol: "Cr", name: "Chromium", nameFa: "کروم", mass: 51.996, category: "transition-metal", group: 6, period: 4, block: "d", electronConfig: "[Ar] 3d⁵ 4s¹", electronegativity: 1.66, density: 7.15, meltingPoint: 2180, boilingPoint: 2944, phase: "solid", abundance: { crust: 102, sea: 0.0003 }, isotopes: [{ massNumber: 50, abundance: 4.345 }, { massNumber: 52, abundance: 83.789 }, { massNumber: 53, abundance: 9.501 }, { massNumber: 54, abundance: 2.365 }] },
+    { number: 25, symbol: "Mn", name: "Manganese", nameFa: "منگنز", mass: 54.938, category: "transition-metal", group: 7, period: 4, block: "d", electronConfig: "[Ar] 3d⁵ 4s²", electronegativity: 1.55, density: 7.44, meltingPoint: 1519, boilingPoint: 2334, phase: "solid", abundance: { crust: 950, sea: 0.0002 }, isotopes: [{ massNumber: 55, abundance: 100 }] },
+    { number: 26, symbol: "Fe", name: "Iron", nameFa: "آهن", mass: 55.845, category: "transition-metal", group: 8, period: 4, block: "d", electronConfig: "[Ar] 3d⁶ 4s²", electronegativity: 1.83, density: 7.874, meltingPoint: 1811, boilingPoint: 3134, phase: "solid", abundance: { crust: 56300, universe: 0.11 }, isotopes: [{ massNumber: 54, abundance: 5.845 }, { massNumber: 56, abundance: 91.754 }, { massNumber: 57, abundance: 2.119 }, { massNumber: 58, abundance: 0.282 }] },
+    { number: 27, symbol: "Co", name: "Cobalt", nameFa: "کبالت", mass: 58.933, category: "transition-metal", group: 9, period: 4, block: "d", electronConfig: "[Ar] 3d⁷ 4s²", electronegativity: 1.88, density: 8.86, meltingPoint: 1768, boilingPoint: 3200, phase: "solid", abundance: { crust: 25, sea: 0.000008 }, isotopes: [{ massNumber: 59, abundance: 100 }] },
+    { number: 28, symbol: "Ni", name: "Nickel", nameFa: "نیکل", mass: 58.693, category: "transition-metal", group: 10, period: 4, block: "d", electronConfig: "[Ar] 3d⁸ 4s²", electronegativity: 1.91, density: 8.912, meltingPoint: 1728, boilingPoint: 3186, phase: "solid", abundance: { crust: 84, sea: 0.00056 }, isotopes: [{ massNumber: 58, abundance: 68.077 }, { massNumber: 60, abundance: 26.223 }, { massNumber: 61, abundance: 1.1399 }, { massNumber: 62, abundance: 3.6346 }, { massNumber: 64, abundance: 0.9255 }] },
+    { number: 29, symbol: "Cu", name: "Copper", nameFa: "مس", mass: 63.546, category: "transition-metal", group: 11, period: 4, block: "d", electronConfig: "[Ar] 3d¹⁰ 4s¹", electronegativity: 1.90, density: 8.96, meltingPoint: 1357.77, boilingPoint: 2835, phase: "solid", abundance: { crust: 60, sea: 0.00025 }, isotopes: [{ massNumber: 63, abundance: 69.15 }, { massNumber: 65, abundance: 30.85 }] },
+    { number: 30, symbol: "Zn", name: "Zinc", nameFa: "روی", mass: 65.38, category: "transition-metal", group: 12, period: 4, block: "d", electronConfig: "[Ar] 3d¹⁰ 4s²", electronegativity: 1.65, density: 7.134, meltingPoint: 692.88, boilingPoint: 1180, phase: "solid", abundance: { crust: 70, sea: 0.00003 }, isotopes: [{ massNumber: 64, abundance: 49.17 }, { massNumber: 66, abundance: 27.73 }, { massNumber: 67, abundance: 4.04 }, { massNumber: 68, abundance: 18.45 }, { massNumber: 70, abundance: 0.61 }] },
+    { number: 31, symbol: "Ga", name: "Gallium", nameFa: "گالیم", mass: 69.723, category: "post-transition-metal", group: 13, period: 4, block: "p", electronConfig: "[Ar] 3d¹⁰ 4s² 4p¹", electronegativity: 1.81, density: 5.907, meltingPoint: 302.9146, boilingPoint: 2673, phase: "solid", abundance: { crust: 19, sea: 0.00003 }, isotopes: [{ massNumber: 69, abundance: 60.108 }, { massNumber: 71, abundance: 39.892 }] },
+    { number: 32, symbol: "Ge", name: "Germanium", nameFa: "ژرمانیم", mass: 72.630, category: "metalloid", group: 14, period: 4, block: "p", electronConfig: "[Ar] 3d¹⁰ 4s² 4p²", electronegativity: 2.01, density: 5.323, meltingPoint: 1211.40, boilingPoint: 3106, phase: "solid", abundance: { crust: 1.5, sea: 0.00005 }, isotopes: [{ massNumber: 70, abundance: 20.57 }, { massNumber: 72, abundance: 27.45 }, { massNumber: 73, abundance: 7.75 }, { massNumber: 74, abundance: 36.50 }, { massNumber: 76, abundance: 7.73 }] },
+    { number: 33, symbol: "As", name: "Arsenic", nameFa: "آرسنیک", mass: 74.922, category: "metalloid", group: 15, period: 4, block: "p", electronConfig: "[Ar] 3d¹⁰ 4s² 4p³", electronegativity: 2.18, density: 5.776, meltingPoint: 1090, boilingPoint: 887, phase: "solid", abundance: { crust: 1.8, sea: 0.0037 }, isotopes: [{ massNumber: 75, abundance: 100 }] },
+    { number: 34, symbol: "Se", name: "Selenium", nameFa: "سلنیم", mass: 78.971, category: "nonmetal", group: 16, period: 4, block: "p", electronConfig: "[Ar] 3d¹⁰ 4s² 4p⁴", electronegativity: 2.55, density: 4.809, meltingPoint: 494, boilingPoint: 958, phase: "solid", abundance: { crust: 0.05, sea: 0.0002 }, isotopes: [{ massNumber: 74, abundance: 0.89 }, { massNumber: 76, abundance: 9.37 }, { massNumber: 77, abundance: 7.63 }, { massNumber: 78, abundance: 23.77 }, { massNumber: 80, abundance: 49.61 }, { massNumber: 82, abundance: 8.73 }] },
+    { number: 35, symbol: "Br", name: "Bromine", nameFa: "برم", mass: 79.904, category: "halogen", group: 17, period: 4, block: "p", electronConfig: "[Ar] 3d¹⁰ 4s² 4p⁵", electronegativity: 2.96, density: 3.122, meltingPoint: 265.8, boilingPoint: 332.0, phase: "liquid", abundance: { crust: 2.4, sea: 67.3 }, isotopes: [{ massNumber: 79, abundance: 50.69 }, { massNumber: 81, abundance: 49.31 }] },
+    { number: 36, symbol: "Kr", name: "Krypton", nameFa: "کریپتون", mass: 83.798, category: "noble-gas", group: 18, period: 4, block: "p", electronConfig: "[Ar] 3d¹⁰ 4s² 4p⁶", electronegativity: 3.00, density: 0.003733, meltingPoint: 115.79, boilingPoint: 119.93, phase: "gas", abundance: { crust: 0.0001, sea: 0.0000021 }, isotopes: [{ massNumber: 78, abundance: 0.35 }, { massNumber: 80, abundance: 2.28 }, { massNumber: 82, abundance: 11.58 }, { massNumber: 83, abundance: 11.49 }, { massNumber: 84, abundance: 57.00 }, { massNumber: 86, abundance: 17.30 }] },
+    { number: 37, symbol: "Rb", name: "Rubidium", nameFa: "روبیدیوم", mass: 85.468, category: "alkali-metal", group: 1, period: 5, block: "s", electronConfig: "[Kr] 5s¹", electronegativity: 0.82, density: 1.532, meltingPoint: 312.46, boilingPoint: 961, phase: "solid", abundance: { crust: 90, sea: 0.12 }, isotopes: [{ massNumber: 85, abundance: 72.17 }, { massNumber: 87, abundance: 27.83 }] },
+    { number: 38, symbol: "Sr", name: "Strontium", nameFa: "استرانسیم", mass: 87.62, category: "alkaline-earth-metal", group: 2, period: 5, block: "s", electronConfig: "[Kr] 5s²", electronegativity: 0.95, density: 2.64, meltingPoint: 1050, boilingPoint: 1655, phase: "solid", abundance: { crust: 370, sea: 7.9 }, isotopes: [{ massNumber: 84, abundance: 0.56 }, { massNumber: 86, abundance: 9.86 }, { massNumber: 87, abundance: 7.00 }, { massNumber: 88, abundance: 82.58 }] },
+    { number: 39, symbol: "Y", name: "Yttrium", nameFa: "ایتریم", mass: 88.906, category: "transition-metal", group: 3, period: 5, block: "d", electronConfig: "[Kr] 4d¹ 5s²", electronegativity: 1.22, density: 4.469, meltingPoint: 1799, boilingPoint: 3609, phase: "solid", abundance: { crust: 33, sea: 0.000013 }, isotopes: [{ massNumber: 89, abundance: 100 }] },
+    { number: 40, symbol: "Zr", name: "Zirconium", nameFa: "زیرکونیم", mass: 91.224, category: "transition-metal", group: 4, period: 5, block: "d", electronConfig: "[Kr] 4d² 5s²", electronegativity: 1.33, density: 6.506, meltingPoint: 2128, boilingPoint: 4682, phase: "solid", abundance: { crust: 165, sea: 0.00003 }, isotopes: [{ massNumber: 90, abundance: 51.45 }, { massNumber: 91, abundance: 11.22 }, { massNumber: 92, abundance: 17.15 }, { massNumber: 94, abundance: 17.38 }, { massNumber: 96, abundance: 2.80 }] },
+    { number: 41, symbol: "Nb", name: "Niobium", nameFa: "نیوبیم", mass: 92.906, category: "transition-metal", group: 5, period: 5, block: "d", electronConfig: "[Kr] 4d⁴ 5s¹", electronegativity: 1.6, density: 8.57, meltingPoint: 2750, boilingPoint: 5017, phase: "solid", abundance: { crust: 20, sea: 0.000001 }, isotopes: [{ massNumber: 93, abundance: 100 }] },
+    { number: 42, symbol: "Mo", name: "Molybdenum", nameFa: "مولیبدن", mass: 95.95, category: "transition-metal", group: 6, period: 5, block: "d", electronConfig: "[Kr] 4d⁵ 5s¹", electronegativity: 2.16, density: 10.22, meltingPoint: 2896, boilingPoint: 4912, phase: "solid", abundance: { crust: 1.2, sea: 0.01 }, isotopes: [{ massNumber: 92, abundance: 14.77 }, { massNumber: 94, abundance: 9.23 }, { massNumber: 95, abundance: 15.90 }, { massNumber: 96, abundance: 16.68 }, { massNumber: 97, abundance: 9.56 }, { massNumber: 98, abundance: 24.19 }, { massNumber: 100, abundance: 9.67 }] },
+    { number: 43, symbol: "Tc", name: "Technetium", nameFa: "تکنسیوم", mass: 98, category: "transition-metal", group: 7, period: 5, block: "d", electronConfig: "[Kr] 4d⁵ 5s²", electronegativity: 1.9, density: 11.5, meltingPoint: 2430, boilingPoint: 4538, phase: "solid", abundance: {}, isotopes: [{ massNumber: 97, abundance: 0 }, { massNumber: 98, abundance: 0 }, { massNumber: 99, abundance: 0 }] },
+    { number: 44, symbol: "Ru", name: "Ruthenium", nameFa: "روتنیم", mass: 101.07, category: "transition-metal", group: 8, period: 5, block: "d", electronConfig: "[Kr] 4d⁷ 5s¹", electronegativity: 2.2, density: 12.37, meltingPoint: 2607, boilingPoint: 4423, phase: "solid", abundance: { crust: 0.001, sea: 0.0000007 }, isotopes: [{ massNumber: 96, abundance: 5.54 }, { massNumber: 98, abundance: 1.87 }, { massNumber: 99, abundance: 12.76 }, { massNumber: 100, abundance: 12.60 }, { massNumber: 101, abundance: 17.06 }, { massNumber: 102, abundance: 31.55 }, { massNumber: 104, abundance: 18.62 }] },
+    { number: 45, symbol: "Rh", name: "Rhodium", nameFa: "رودیم", mass: 102.91, category: "transition-metal", group: 9, period: 5, block: "d", electronConfig: "[Kr] 4d⁸ 5s¹", electronegativity: 2.28, density: 12.41, meltingPoint: 2237, boilingPoint: 3968, phase: "solid", abundance: { crust: 0.0002, sea: 0.00000002 }, isotopes: [{ massNumber: 103, abundance: 100 }] },
+    { number: 46, symbol: "Pd", name: "Palladium", nameFa: "پالادیم", mass: 106.42, category: "transition-metal", group: 10, period: 5, block: "d", electronConfig: "[Kr] 4d¹⁰", electronegativity: 2.20, density: 12.02, meltingPoint: 1828.05, boilingPoint: 3236, phase: "solid", abundance: { crust: 0.015, sea: 0.0000002 }, isotopes: [{ massNumber: 102, abundance: 1.02 }, { massNumber: 104, abundance: 11.14 }, { massNumber: 105, abundance: 22.33 }, { massNumber: 106, abundance: 27.33 }, { massNumber: 108, abundance: 26.46 }, { massNumber: 110, abundance: 11.72 }] },
+    { number: 47, symbol: "Ag", name: "Silver", nameFa: "نقره", mass: 107.87, category: "transition-metal", group: 11, period: 5, block: "d", electronConfig: "[Kr] 4d¹⁰ 5s¹", electronegativity: 1.93, density: 10.501, meltingPoint: 1234.93, boilingPoint: 2435, phase: "solid", abundance: { crust: 0.075, sea: 0.00004 }, isotopes: [{ massNumber: 107, abundance: 51.839 }, { massNumber: 109, abundance: 48.161 }] },
+    { number: 48, symbol: "Cd", name: "Cadmium", nameFa: "کادمیم", mass: 112.41, category: "transition-metal", group: 12, period: 5, block: "d", electronConfig: "[Kr] 4d¹⁰ 5s²", electronegativity: 1.69, density: 8.69, meltingPoint: 594.22, boilingPoint: 1040, phase: "solid", abundance: { crust: 0.15, sea: 0.00011 }, isotopes: [{ massNumber: 106, abundance: 1.25 }, { massNumber: 108, abundance: 0.89 }, { massNumber: 110, abundance: 12.49 }, { massNumber: 111, abundance: 12.80 }, { massNumber: 112, abundance: 24.13 }, { massNumber: 113, abundance: 12.22 }, { massNumber: 114, abundance: 28.73 }, { massNumber: 116, abundance: 7.49 }] },
+    { number: 49, symbol: "In", name: "Indium", nameFa: "ایندیم", mass: 114.82, category: "post-transition-metal", group: 13, period: 5, block: "p", electronConfig: "[Kr] 4d¹⁰ 5s² 5p¹", electronegativity: 1.78, density: 7.31, meltingPoint: 429.75, boilingPoint: 2345, phase: "solid", abundance: { crust: 0.25, sea: 0.0001 }, isotopes: [{ massNumber: 113, abundance: 4.29 }, { massNumber: 115, abundance: 95.71 }] },
+    { number: 50, symbol: "Sn", name: "Tin", nameFa: "قلع", mass: 118.71, category: "post-transition-metal", group: 14, period: 5, block: "p", electronConfig: "[Kr] 4d¹⁰ 5s² 5p²", electronegativity: 1.96, density: 7.287, meltingPoint: 505.08, boilingPoint: 2875, phase: "solid", abundance: { crust: 2.3, sea: 0.000004 }, isotopes: [{ massNumber: 112, abundance: 0.97 }, { massNumber: 114, abundance: 0.65 }, { massNumber: 115, abundance: 0.34 }, { massNumber: 116, abundance: 14.54 }, { massNumber: 117, abundance: 7.68 }, { massNumber: 118, abundance: 24.22 }, { massNumber: 119, abundance: 8.59 }, { massNumber: 120, abundance: 32.58 }, { massNumber: 122, abundance: 4.63 }, { massNumber: 124, abundance: 5.79 }] },
+    { number: 51, symbol: "Sb", name: "Antimony", nameFa: "آنتیموان", mass: 121.76, category: "metalloid", group: 15, period: 5, block: "p", electronConfig: "[Kr] 4d¹⁰ 5s² 5p³", electronegativity: 2.05, density: 6.685, meltingPoint: 903.78, boilingPoint: 1860, phase: "solid", abundance: { crust: 0.2, sea: 0.00024 }, isotopes: [{ massNumber: 121, abundance: 57.21 }, { massNumber: 123, abundance: 42.79 }] },
+    { number: 52, symbol: "Te", name: "Tellurium", nameFa: "تلوریم", mass: 127.60, category: "metalloid", group: 16, period: 5, block: "p", electronConfig: "[Kr] 4d¹⁰ 5s² 5p⁴", electronegativity: 2.1, density: 6.232, meltingPoint: 722.66, boilingPoint: 1261, phase: "solid", abundance: { crust: 0.001, sea: 0.000000001 }, isotopes: [{ massNumber: 120, abundance: 0.09 }, { massNumber: 122, abundance: 2.55 }, { massNumber: 123, abundance: 0.89 }, { massNumber: 124, abundance: 4.74 }, { massNumber: 125, abundance: 7.07 }, { massNumber: 126, abundance: 18.84 }, { massNumber: 128, abundance: 31.74 }, { massNumber: 130, abundance: 34.08 }] },
+    { number: 53, symbol: "I", name: "Iodine", nameFa: "ید", mass: 126.90, category: "halogen", group: 17, period: 5, block: "p", electronConfig: "[Kr] 4d¹⁰ 5s² 5p⁵", electronegativity: 2.66, density: 4.93, meltingPoint: 386.85, boilingPoint: 457.4, phase: "solid", abundance: { crust: 0.45, sea: 0.06 }, isotopes: [{ massNumber: 127, abundance: 100 }] },
+    { number: 54, symbol: "Xe", name: "Xenon", nameFa: "زنون", mass: 131.29, category: "noble-gas", group: 18, period: 5, block: "p", electronConfig: "[Kr] 4d¹⁰ 5s² 5p⁶", electronegativity: 2.6, density: 0.005887, meltingPoint: 161.4, boilingPoint: 165.03, phase: "gas", abundance: { crust: 0.00003, sea: 0.00000005 }, isotopes: [{ massNumber: 124, abundance: 0.095 }, { massNumber: 126, abundance: 0.089 }, { massNumber: 128, abundance: 1.910 }, { massNumber: 129, abundance: 26.401 }, { massNumber: 130, abundance: 4.071 }, { massNumber: 131, abundance: 21.232 }, { massNumber: 132, abundance: 26.909 }, { massNumber: 134, abundance: 10.436 }, { massNumber: 136, abundance: 8.857 }] },
+    { number: 55, symbol: "Cs", name: "Caesium", nameFa: "سزیم", mass: 132.91, category: "alkali-metal", group: 1, period: 6, block: "s", electronConfig: "[Xe] 6s¹", electronegativity: 0.79, density: 1.873, meltingPoint: 301.59, boilingPoint: 944, phase: "solid", abundance: { crust: 3, sea: 0.0003 }, isotopes: [{ massNumber: 133, abundance: 100 }] },
+    { number: 56, symbol: "Ba", name: "Barium", nameFa: "باریم", mass: 137.33, category: "alkaline-earth-metal", group: 2, period: 6, block: "s", electronConfig: "[Xe] 6s²", electronegativity: 0.89, density: 3.594, meltingPoint: 1000, boilingPoint: 2170, phase: "solid", abundance: { crust: 425, sea: 0.013 }, isotopes: [{ massNumber: 130, abundance: 0.106 }, { massNumber: 132, abundance: 0.101 }, { massNumber: 134, abundance: 2.417 }, { massNumber: 135, abundance: 6.592 }, { massNumber: 136, abundance: 7.854 }, { massNumber: 137, abundance: 11.232 }, { massNumber: 138, abundance: 71.698 }] },
+    { number: 57, symbol: "La", name: "Lanthanum", nameFa: "لانتان", mass: 138.91, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 5d¹ 6s²", electronegativity: 1.10, density: 6.145, meltingPoint: 1193, boilingPoint: 3737, phase: "solid", abundance: { crust: 39, sea: 0.0000034 }, isotopes: [{ massNumber: 138, abundance: 0.090 }, { massNumber: 139, abundance: 99.910 }] },
+    { number: 58, symbol: "Ce", name: "Cerium", nameFa: "سریم", mass: 140.12, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f¹ 5d¹ 6s²", electronegativity: 1.12, density: 6.770, meltingPoint: 1068, boilingPoint: 3716, phase: "solid", abundance: { crust: 66.5, sea: 0.0000012 }, isotopes: [{ massNumber: 136, abundance: 0.185 }, { massNumber: 138, abundance: 0.251 }, { massNumber: 140, abundance: 88.450 }, { massNumber: 142, abundance: 11.114 }] },
+    { number: 59, symbol: "Pr", name: "Praseodymium", nameFa: "پرازئودیمیم", mass: 140.91, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f³ 6s²", electronegativity: 1.13, density: 6.773, meltingPoint: 1208, boilingPoint: 3793, phase: "solid", abundance: { crust: 9.2, sea: 0.00000064 }, isotopes: [{ massNumber: 141, abundance: 100 }] },
+    { number: 60, symbol: "Nd", name: "Neodymium", nameFa: "نئودیمیم", mass: 144.24, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f⁴ 6s²", electronegativity: 1.14, density: 7.007, meltingPoint: 1297, boilingPoint: 3347, phase: "solid", abundance: { crust: 33, sea: 0.0000028 }, isotopes: [{ massNumber: 142, abundance: 27.2 }, { massNumber: 143, abundance: 12.2 }, { massNumber: 144, abundance: 23.8 }, { massNumber: 145, abundance: 8.3 }, { massNumber: 146, abundance: 17.2 }, { massNumber: 148, abundance: 5.7 }, { massNumber: 150, abundance: 5.6 }] },
+    { number: 61, symbol: "Pm", name: "Promethium", nameFa: "پرومتیم", mass: 145, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f⁵ 6s²", electronegativity: 1.13, density: 7.26, meltingPoint: 1315, boilingPoint: 3273, phase: "solid", abundance: {}, isotopes: [{ massNumber: 145, abundance: 0 }, { massNumber: 147, abundance: 0 }] },
+    { number: 62, symbol: "Sm", name: "Samarium", nameFa: "ساماریم", mass: 150.36, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f⁶ 6s²", electronegativity: 1.17, density: 7.520, meltingPoint: 1345, boilingPoint: 2067, phase: "solid", abundance: { crust: 7.05, sea: 0.00000045 }, isotopes: [{ massNumber: 144, abundance: 3.07 }, { massNumber: 147, abundance: 14.99 }, { massNumber: 148, abundance: 11.24 }, { massNumber: 149, abundance: 13.82 }, { massNumber: 150, abundance: 7.38 }, { massNumber: 152, abundance: 26.75 }, { massNumber: 154, abundance: 22.75 }] },
+    { number: 63, symbol: "Eu", name: "Europium", nameFa: "اروپیم", mass: 151.96, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f⁷ 6s²", electronegativity: 1.2, density: 5.243, meltingPoint: 1099, boilingPoint: 1802, phase: "solid", abundance: { crust: 2, sea: 0.00000013 }, isotopes: [{ massNumber: 151, abundance: 47.81 }, { massNumber: 153, abundance: 52.19 }] },
+    { number: 64, symbol: "Gd", name: "Gadolinium", nameFa: "گادولینیم", mass: 157.25, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f⁷ 5d¹ 6s²", electronegativity: 1.20, density: 7.895, meltingPoint: 1585, boilingPoint: 3546, phase: "solid", abundance: { crust: 6.2, sea: 0.0000007 }, isotopes: [{ massNumber: 152, abundance: 0.20 }, { massNumber: 154, abundance: 2.18 }, { massNumber: 155, abundance: 14.80 }, { massNumber: 156, abundance: 20.47 }, { massNumber: 157, abundance: 15.65 }, { massNumber: 158, abundance: 24.84 }, { massNumber: 160, abundance: 21.86 }] },
+    { number: 65, symbol: "Tb", name: "Terbium", nameFa: "تربیم", mass: 158.93, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f⁹ 6s²", electronegativity: 1.2, density: 8.229, meltingPoint: 1629, boilingPoint: 3503, phase: "solid", abundance: { crust: 1.2, sea: 0.00000014 }, isotopes: [{ massNumber: 159, abundance: 100 }] },
+    { number: 66, symbol: "Dy", name: "Dysprosium", nameFa: "دیسپروزیم", mass: 162.50, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f¹⁰ 6s²", electronegativity: 1.22, density: 8.55, meltingPoint: 1680, boilingPoint: 2840, phase: "solid", abundance: { crust: 5.2, sea: 0.00000091 }, isotopes: [{ massNumber: 156, abundance: 0.056 }, { massNumber: 158, abundance: 0.095 }, { massNumber: 160, abundance: 2.329 }, { massNumber: 161, abundance: 18.889 }, { massNumber: 162, abundance: 25.475 }, { massNumber: 163, abundance: 24.896 }, { massNumber: 164, abundance: 28.260 }] },
+    { number: 67, symbol: "Ho", name: "Holmium", nameFa: "هولمیم", mass: 164.93, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f¹¹ 6s²", electronegativity: 1.23, density: 8.795, meltingPoint: 1734, boilingPoint: 2993, phase: "solid", abundance: { crust: 1.3, sea: 0.00000022 }, isotopes: [{ massNumber: 165, abundance: 100 }] },
+    { number: 68, symbol: "Er", name: "Erbium", nameFa: "اربیم", mass: 167.26, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f¹² 6s²", electronegativity: 1.24, density: 9.066, meltingPoint: 1802, boilingPoint: 3141, phase: "solid", abundance: { crust: 3.5, sea: 0.00000087 }, isotopes: [{ massNumber: 162, abundance: 0.139 }, { massNumber: 164, abundance: 1.601 }, { massNumber: 166, abundance: 33.503 }, { massNumber: 167, abundance: 22.869 }, { massNumber: 168, abundance: 26.978 }, { massNumber: 170, abundance: 14.910 }] },
+    { number: 69, symbol: "Tm", name: "Thulium", nameFa: "تولیم", mass: 168.93, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f¹³ 6s²", electronegativity: 1.25, density: 9.321, meltingPoint: 1818, boilingPoint: 2223, phase: "solid", abundance: { crust: 0.52, sea: 0.00000017 }, isotopes: [{ massNumber: 169, abundance: 100 }] },
+    { number: 70, symbol: "Yb", name: "Ytterbium", nameFa: "ایتربیم", mass: 173.05, category: "lanthanide", group: 3, period: 6, block: "f", electronConfig: "[Xe] 4f¹⁴ 6s²", electronegativity: 1.1, density: 6.965, meltingPoint: 1097, boilingPoint: 1469, phase: "solid", abundance: { crust: 3.2, sea: 0.0000008 }, isotopes: [{ massNumber: 168, abundance: 0.123 }, { massNumber: 170, abundance: 2.982 }, { massNumber: 171, abundance: 14.086 }, { massNumber: 172, abundance: 21.686 }, { massNumber: 173, abundance: 16.103 }, { massNumber: 174, abundance: 32.026 }, { massNumber: 176, abundance: 12.995 }] },
+    { number: 71, symbol: "Lu", name: "Lutetium", nameFa: "لوتتیم", mass: 174.97, category: "lanthanide", group: 3, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d¹ 6s²", electronegativity: 1.27, density: 9.84, meltingPoint: 1925, boilingPoint: 3675, phase: "solid", abundance: { crust: 0.8, sea: 0.00000015 }, isotopes: [{ massNumber: 175, abundance: 97.41 }, { massNumber: 176, abundance: 2.59 }] },
+    { number: 72, symbol: "Hf", name: "Hafnium", nameFa: "هافنیم", mass: 178.49, category: "transition-metal", group: 4, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d² 6s²", electronegativity: 1.3, density: 13.31, meltingPoint: 2506, boilingPoint: 4876, phase: "solid", abundance: { crust: 3, sea: 0.0000007 }, isotopes: [{ massNumber: 174, abundance: 0.16 }, { massNumber: 176, abundance: 5.26 }, { massNumber: 177, abundance: 18.60 }, { massNumber: 178, abundance: 27.28 }, { massNumber: 179, abundance: 13.62 }, { massNumber: 180, abundance: 35.08 }] },
+    { number: 73, symbol: "Ta", name: "Tantalum", nameFa: "تانتال", mass: 180.95, category: "transition-metal", group: 5, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d³ 6s²", electronegativity: 1.5, density: 16.654, meltingPoint: 3290, boilingPoint: 5731, phase: "solid", abundance: { crust: 2, sea: 0.000002 }, isotopes: [{ massNumber: 180, abundance: 0.012 }, { massNumber: 181, abundance: 99.988 }] },
+    { number: 74, symbol: "W", name: "Tungsten", nameFa: "تنگستن", mass: 183.84, category: "transition-metal", group: 6, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d⁴ 6s²", electronegativity: 2.36, density: 19.25, meltingPoint: 3695, boilingPoint: 5828, phase: "solid", abundance: { crust: 1.25, sea: 0.0001 }, isotopes: [{ massNumber: 180, abundance: 0.12 }, { massNumber: 182, abundance: 26.50 }, { massNumber: 183, abundance: 14.31 }, { massNumber: 184, abundance: 30.64 }, { massNumber: 186, abundance: 28.43 }] },
+    { number: 75, symbol: "Re", name: "Rhenium", nameFa: "رنیم", mass: 186.21, category: "transition-metal", group: 7, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d⁵ 6s²", electronegativity: 1.9, density: 21.02, meltingPoint: 3459, boilingPoint: 5869, phase: "solid", abundance: { crust: 0.0007, sea: 0.00000001 }, isotopes: [{ massNumber: 185, abundance: 37.40 }, { massNumber: 187, abundance: 62.60 }] },
+    { number: 76, symbol: "Os", name: "Osmium", nameFa: "اسمیم", mass: 190.23, category: "transition-metal", group: 8, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d⁶ 6s²", electronegativity: 2.2, density: 22.59, meltingPoint: 3306, boilingPoint: 5285, phase: "solid", abundance: { crust: 0.0015, sea: 0.00000001 }, isotopes: [{ massNumber: 184, abundance: 0.02 }, { massNumber: 186, abundance: 1.59 }, { massNumber: 187, abundance: 1.96 }, { massNumber: 188, abundance: 13.24 }, { massNumber: 189, abundance: 16.15 }, { massNumber: 190, abundance: 26.26 }, { massNumber: 192, abundance: 40.78 }] },
+    { number: 77, symbol: "Ir", name: "Iridium", nameFa: "ایریدیم", mass: 192.22, category: "transition-metal", group: 9, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d⁷ 6s²", electronegativity: 2.20, density: 22.56, meltingPoint: 2719, boilingPoint: 4701, phase: "solid", abundance: { crust: 0.001, sea: 0.000000001 }, isotopes: [{ massNumber: 191, abundance: 37.3 }, { massNumber: 193, abundance: 62.7 }] },
+    { number: 78, symbol: "Pt", name: "Platinum", nameFa: "پلاتین", mass: 195.08, category: "transition-metal", group: 10, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d⁹ 6s¹", electronegativity: 2.28, density: 21.46, meltingPoint: 2041.4, boilingPoint: 4098, phase: "solid", abundance: { crust: 0.005, sea: 0.0000000005 }, isotopes: [{ massNumber: 190, abundance: 0.012 }, { massNumber: 192, abundance: 0.782 }, { massNumber: 194, abundance: 32.86 }, { massNumber: 195, abundance: 33.78 }, { massNumber: 196, abundance: 25.21 }, { massNumber: 198, abundance: 7.36 }] },
+    { number: 79, symbol: "Au", name: "Gold", nameFa: "طلا", mass: 196.97, category: "transition-metal", group: 11, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s¹", electronegativity: 2.54, density: 19.282, meltingPoint: 1337.33, boilingPoint: 3129, phase: "solid", abundance: { crust: 0.004, sea: 0.000000004 }, isotopes: [{ massNumber: 197, abundance: 100 }] },
+    { number: 80, symbol: "Hg", name: "Mercury", nameFa: "جیوه", mass: 200.59, category: "transition-metal", group: 12, period: 6, block: "d", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s²", electronegativity: 2.00, density: 13.5336, meltingPoint: 234.32, boilingPoint: 629.88, phase: "liquid", abundance: { crust: 0.085, sea: 0.00003 }, isotopes: [{ massNumber: 196, abundance: 0.15 }, { massNumber: 198, abundance: 9.97 }, { massNumber: 199, abundance: 16.87 }, { massNumber: 200, abundance: 23.10 }, { massNumber: 201, abundance: 13.18 }, { massNumber: 202, abundance: 29.86 }, { massNumber: 204, abundance: 6.87 }] },
+    { number: 81, symbol: "Tl", name: "Thallium", nameFa: "تالیم", mass: 204.38, category: "post-transition-metal", group: 13, period: 6, block: "p", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹", electronegativity: 1.62, density: 11.85, meltingPoint: 577, boilingPoint: 1746, phase: "solid", abundance: { crust: 0.85, sea: 0.000019 }, isotopes: [{ massNumber: 203, abundance: 29.52 }, { massNumber: 205, abundance: 70.48 }] },
+    { number: 82, symbol: "Pb", name: "Lead", nameFa: "سرب", mass: 207.2, category: "post-transition-metal", group: 14, period: 6, block: "p", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²", electronegativity: 2.33, density: 11.342, meltingPoint: 600.61, boilingPoint: 2022, phase: "solid", abundance: { crust: 14, sea: 0.00003 }, isotopes: [{ massNumber: 204, abundance: 1.4 }, { massNumber: 206, abundance: 24.1 }, { massNumber: 207, abundance: 22.1 }, { massNumber: 208, abundance: 52.4 }] },
+    { number: 83, symbol: "Bi", name: "Bismuth", nameFa: "بیسموت", mass: 208.98, category: "post-transition-metal", group: 15, period: 6, block: "p", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³", electronegativity: 2.02, density: 9.807, meltingPoint: 544.7, boilingPoint: 1837, phase: "solid", abundance: { crust: 0.009, sea: 0.0000002 }, isotopes: [{ massNumber: 209, abundance: 100 }] },
+    { number: 84, symbol: "Po", name: "Polonium", nameFa: "پلونیوم", mass: 209, category: "post-transition-metal", group: 16, period: 6, block: "p", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴", electronegativity: 2.0, density: 9.32, meltingPoint: 527, boilingPoint: 1235, phase: "solid", abundance: { crust: 0.0000000002 }, isotopes: [{ massNumber: 209, abundance: 0 }] },
+    { number: 85, symbol: "At", name: "Astatine", nameFa: "آستاتین", mass: 210, category: "halogen", group: 17, period: 6, block: "p", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵", electronegativity: 2.2, density: 7, meltingPoint: 575, boilingPoint: 610, phase: "solid", abundance: {}, isotopes: [{ massNumber: 210, abundance: 0 }] },
+    { number: 86, symbol: "Rn", name: "Radon", nameFa: "رادون", mass: 222, category: "noble-gas", group: 18, period: 6, block: "p", electronConfig: "[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶", electronegativity: 2.2, density: 0.00973, meltingPoint: 202, boilingPoint: 211.3, phase: "gas", abundance: { crust: 0.0000000004 }, isotopes: [{ massNumber: 222, abundance: 0 }] },
+    { number: 87, symbol: "Fr", name: "Francium", nameFa: "فرانسیم", mass: 223, category: "alkali-metal", group: 1, period: 7, block: "s", electronConfig: "[Rn] 7s¹", electronegativity: 0.7, density: 1.87, meltingPoint: 300, boilingPoint: 950, phase: "solid", abundance: {}, isotopes: [{ massNumber: 223, abundance: 0 }] },
+    { number: 88, symbol: "Ra", name: "Radium", nameFa: "رادیم", mass: 226, category: "alkaline-earth-metal", group: 2, period: 7, block: "s", electronConfig: "[Rn] 7s²", electronegativity: 0.9, density: 5.5, meltingPoint: 973, boilingPoint: 2010, phase: "solid", abundance: {}, isotopes: [{ massNumber: 226, abundance: 0 }] },
+    { number: 89, symbol: "Ac", name: "Actinium", nameFa: "اکتینیم", mass: 227, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 6d¹ 7s²", electronegativity: 1.1, density: 10.07, meltingPoint: 1323, boilingPoint: 3471, phase: "solid", abundance: {}, isotopes: [{ massNumber: 227, abundance: 0 }] },
+    { number: 90, symbol: "Th", name: "Thorium", nameFa: "توریم", mass: 232.04, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 6d² 7s²", electronegativity: 1.3, density: 11.72, meltingPoint: 2115, boilingPoint: 5061, phase: "solid", abundance: { crust: 9.6, sea: 0.0000004 }, isotopes: [{ massNumber: 232, abundance: 100 }] },
+    { number: 91, symbol: "Pa", name: "Protactinium", nameFa: "پروتاکتینیم", mass: 231.04, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f² 6d¹ 7s²", electronegativity: 1.5, density: 15.37, meltingPoint: 1841, boilingPoint: 4300, phase: "solid", abundance: {}, isotopes: [{ massNumber: 231, abundance: 100 }] },
+    { number: 92, symbol: "U", name: "Uranium", nameFa: "اورانیوم", mass: 238.03, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f³ 6d¹ 7s²", electronegativity: 1.38, density: 18.95, meltingPoint: 1405.3, boilingPoint: 4404, phase: "solid", abundance: { crust: 2.7, sea: 0.0032 }, isotopes: [{ massNumber: 234, abundance: 0.0054 }, { massNumber: 235, abundance: 0.7204 }, { massNumber: 238, abundance: 99.2742 }] },
+    { number: 93, symbol: "Np", name: "Neptunium", nameFa: "نپتونیم", mass: 237, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f⁴ 6d¹ 7s²", electronegativity: 1.36, density: 20.45, meltingPoint: 917, boilingPoint: 4273, phase: "solid", abundance: {}, isotopes: [{ massNumber: 237, abundance: 0 }] },
+    { number: 94, symbol: "Pu", name: "Plutonium", nameFa: "پلوتونیم", mass: 244, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f⁶ 7s²", electronegativity: 1.28, density: 19.84, meltingPoint: 912.5, boilingPoint: 3501, phase: "solid", abundance: {}, isotopes: [{ massNumber: 239, abundance: 0 }] },
+    { number: 95, symbol: "Am", name: "Americium", nameFa: "آمریسیم", mass: 243, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f⁷ 7s²", electronegativity: 1.13, density: 13.69, meltingPoint: 1449, boilingPoint: 2880, phase: "solid", abundance: {}, isotopes: [{ massNumber: 241, abundance: 0 }, { massNumber: 243, abundance: 0 }] },
+    { number: 96, symbol: "Cm", name: "Curium", nameFa: "کوریم", mass: 247, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f⁷ 6d¹ 7s²", electronegativity: 1.28, density: 13.51, meltingPoint: 1613, boilingPoint: 3383, phase: "solid", abundance: {}, isotopes: [{ massNumber: 242, abundance: 0 }, { massNumber: 243, abundance: 0 }, { massNumber: 244, abundance: 0 }] },
+    { number: 97, symbol: "Bk", name: "Berkelium", nameFa: "برکلیم", mass: 247, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f⁹ 7s²", electronegativity: 1.3, density: 14.79, meltingPoint: 1259, boilingPoint: 2900, phase: "solid", abundance: {}, isotopes: [{ massNumber: 247, abundance: 0 }] },
+    { number: 98, symbol: "Cf", name: "Californium", nameFa: "کالیفرنیم", mass: 251, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f¹⁰ 7s²", electronegativity: 1.3, density: 15.1, meltingPoint: 1173, boilingPoint: 1743, phase: "solid", abundance: {}, isotopes: [{ massNumber: 251, abundance: 0 }] },
+    { number: 99, symbol: "Es", name: "Einsteinium", nameFa: "اینشتینیم", mass: 252, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f¹¹ 7s²", electronegativity: 1.3, density: 8.84, meltingPoint: 1133, boilingPoint: 1269, phase: "solid", abundance: {}, isotopes: [{ massNumber: 252, abundance: 0 }] },
+    { number: 100, symbol: "Fm", name: "Fermium", nameFa: "فرمیم", mass: 257, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f¹² 7s²", electronegativity: 1.3, density: 9.7, meltingPoint: 1800, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 257, abundance: 0 }] },
+    { number: 101, symbol: "Md", name: "Mendelevium", nameFa: "مندلیم", mass: 258, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f¹³ 7s²", electronegativity: 1.3, density: 10.3, meltingPoint: 1100, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 258, abundance: 0 }] },
+    { number: 102, symbol: "No", name: "Nobelium", nameFa: "نوبلیم", mass: 259, category: "actinide", group: 3, period: 7, block: "f", electronConfig: "[Rn] 5f¹⁴ 7s²", electronegativity: 1.3, density: 9.9, meltingPoint: 1100, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 259, abundance: 0 }] },
+    { number: 103, symbol: "Lr", name: "Lawrencium", nameFa: "لارنسیم", mass: 266, category: "actinide", group: 3, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 7s² 7p¹", electronegativity: 1.3, density: 15.6, meltingPoint: 1900, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 266, abundance: 0 }] },
+    { number: 104, symbol: "Rf", name: "Rutherfordium", nameFa: "رادرفوردیم", mass: 267, category: "transition-metal", group: 4, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d² 7s²", electronegativity: null, density: 23.2, meltingPoint: 2400, boilingPoint: 5800, phase: "solid", abundance: {}, isotopes: [{ massNumber: 267, abundance: 0 }] },
+    { number: 105, symbol: "Db", name: "Dubnium", nameFa: "دوبنیم", mass: 268, category: "transition-metal", group: 5, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d³ 7s²", electronegativity: null, density: 29.3, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 268, abundance: 0 }] },
+    { number: 106, symbol: "Sg", name: "Seaborgium", nameFa: "سیبورگیم", mass: 269, category: "transition-metal", group: 6, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d⁴ 7s²", electronegativity: null, density: 35.0, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 269, abundance: 0 }] },
+    { number: 107, symbol: "Bh", name: "Bohrium", nameFa: "بوریم", mass: 270, category: "transition-metal", group: 7, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d⁵ 7s²", electronegativity: null, density: 37.1, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 270, abundance: 0 }] },
+    { number: 108, symbol: "Hs", name: "Hassium", nameFa: "هاسیم", mass: 269, category: "transition-metal", group: 8, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d⁶ 7s²", electronegativity: null, density: 40.7, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 269, abundance: 0 }] },
+    { number: 109, symbol: "Mt", name: "Meitnerium", nameFa: "مایتنریم", mass: 278, category: "unknown", group: 9, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d⁷ 7s²", electronegativity: null, density: 37.4, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 278, abundance: 0 }] },
+    { number: 110, symbol: "Ds", name: "Darmstadtium", nameFa: "دارمشتاتیم", mass: 281, category: "unknown", group: 10, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d⁸ 7s²", electronegativity: null, density: 34.8, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 281, abundance: 0 }] },
+    { number: 111, symbol: "Rg", name: "Roentgenium", nameFa: "رونتگنیم", mass: 282, category: "unknown", group: 11, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d⁹ 7s²", electronegativity: null, density: 28.7, meltingPoint: null, boilingPoint: null, phase: "solid", abundance: {}, isotopes: [{ massNumber: 282, abundance: 0 }] },
+    { number: 112, symbol: "Cn", name: "Copernicium", nameFa: "کوپرنیسیم", mass: 285, category: "transition-metal", group: 12, period: 7, block: "d", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s²", electronegativity: null, density: 23.7, meltingPoint: null, boilingPoint: 357, phase: "liquid", abundance: {}, isotopes: [{ massNumber: 285, abundance: 0 }] },
+    { number: 113, symbol: "Nh", name: "Nihonium", nameFa: "نیهونیم", mass: 286, category: "unknown", group: 13, period: 7, block: "p", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹", electronegativity: null, density: 16, meltingPoint: 700, boilingPoint: 1430, phase: "solid", abundance: {}, isotopes: [{ massNumber: 286, abundance: 0 }] },
+    { number: 114, symbol: "Fl", name: "Flerovium", nameFa: "فلروویوم", mass: 289, category: "unknown", group: 14, period: 7, block: "p", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²", electronegativity: null, density: 14, meltingPoint: 340, boilingPoint: 420, phase: "solid", abundance: {}, isotopes: [{ massNumber: 289, abundance: 0 }] },
+    { number: 115, symbol: "Mc", name: "Moscovium", nameFa: "مسکوویم", mass: 290, category: "unknown", group: 15, period: 7, block: "p", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³", electronegativity: null, density: 13.5, meltingPoint: 700, boilingPoint: 1400, phase: "solid", abundance: {}, isotopes: [{ massNumber: 290, abundance: 0 }] },
+    { number: 116, symbol: "Lv", name: "Livermorium", nameFa: "لیورموریم", mass: 293, category: "unknown", group: 16, period: 7, block: "p", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴", electronegativity: null, density: 12.9, meltingPoint: 709, boilingPoint: 1085, phase: "solid", abundance: {}, isotopes: [{ massNumber: 293, abundance: 0 }] },
+    { number: 117, symbol: "Ts", name: "Tennessine", nameFa: "تنسین", mass: 294, category: "unknown", group: 17, period: 7, block: "p", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵", electronegativity: null, density: 7.2, meltingPoint: 723, boilingPoint: 883, phase: "solid", abundance: {}, isotopes: [{ massNumber: 294, abundance: 0 }] },
+    { number: 118, symbol: "Og", name: "Oganesson", nameFa: "اوگانسون", mass: 294, category: "unknown", group: 18, period: 7, block: "p", electronConfig: "[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶", electronegativity: null, density: 5.0, meltingPoint: 325, boilingPoint: 450, phase: "solid", abundance: {}, isotopes: [{ massNumber: 294, abundance: 0 }] }
+];
+
+const tableContainer = document.getElementById('periodicTable');
+
+function renderPeriodicTable() {
+    tableContainer.innerHTML = '';
+    const gridMap = {};
+
+    elementsData.forEach(el => {
+        let col, row;
+
+        if (el.number === 1) { col = 1; row = 1; }
+        else if (el.number === 2) { col = 18; row = 1; }
+        else if (el.number >= 3 && el.number <= 4) { col = el.number - 2; row = 2; }
+        else if (el.number >= 5 && el.number <= 10) { col = el.number + 8; row = 2; }
+        else if (el.number >= 11 && el.number <= 12) { col = el.number - 10; row = 3; }
+        else if (el.number >= 13 && el.number <= 18) { col = el.number; row = 3; }
+        else if (el.number >= 19 && el.number <= 36) { col = el.number - 18; row = 4; }
+        else if (el.number >= 37 && el.number <= 54) { col = el.number - 36; row = 5; }
+        else if (el.number >= 55 && el.number <= 56) { col = el.number - 54; row = 6; }
+        else if (el.number >= 57 && el.number <= 71) { col = el.number - 57 + 3; row = 9; }
+        else if (el.number >= 72 && el.number <= 86) { col = el.number - 68; row = 6; }
+        else if (el.number >= 87 && el.number <= 88) { col = el.number - 86; row = 7; }
+        else if (el.number >= 89 && el.number <= 103) { col = el.number - 89 + 3; row = 10; }
+        else if (el.number >= 104 && el.number <= 118) { col = el.number - 100; row = 7; }
+
+        if (col && row) gridMap[`${row}-${col}`] = el;
+    });
+
+    for (let r = 1; r <= 10; r++) {
+        for (let c = 1; c <= 18; c++) {
+            if ((r === 9 || r === 10) && c < 3) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-slot';
+                tableContainer.appendChild(empty);
+                continue;
+            }
+
+            const key = `${r}-${c}`;
+            const el = gridMap[key];
+
+            if (el) {
+                const card = createElementCard(el);
+                card.style.gridRow = r;
+                card.style.gridColumn = c;
+                tableContainer.appendChild(card);
+            } else {
+                const empty = document.createElement('div');
+                empty.className = 'empty-slot';
+                empty.style.gridRow = r;
+                empty.style.gridColumn = c;
+                tableContainer.appendChild(empty);
+            }
+        }
+    }
+}
+
+function createElementCard(el) {
+    const card = document.createElement('div');
+    card.className = 'element-card';
+    card.setAttribute('data-category', el.category);
+    card.innerHTML = `
+        <span class="atomic-number">${el.number}</span>
+        <span class="symbol">${el.symbol}</span>
+        <span class="name">${el.nameFa || el.name}</span>
+    `;
+    card.onclick = () => showElementDetail(el);
+    return card;
+}
+
+function showElementDetail(el) {
+    const modal = document.getElementById('modal');
+    const modalBody = document.getElementById('modalBody');
+
+    let isotopeRows = '';
+    if (el.isotopes && el.isotopes.length > 0) {
+        el.isotopes.forEach(iso => {
+            const ab = iso.abundance || 0;
+            const barWidth = Math.min(ab, 100);
+            isotopeRows += `
+                <tr>
+                    <td><sup>${iso.massNumber}</sup>${el.symbol}</td>
+                    <td>${iso.massNumber}</td>
+                    <td>${ab > 0 ? ab.toFixed(4) + '%' : 'ردیابی'}</td>
+                    <td>
+                        <div class="abundance-bar">
+                            <div class="abundance-bar-fill" style="width: ${barWidth}%"></div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+    } else {
+        isotopeRows = '<tr><td colspan="4" style="text-align:center;color:#9aa0b5;">ایزوتوپ پایدار شناخته شده‌ای ندارد</td></tr>';
+    }
+
+    let abundanceHtml = '';
+    const ab = el.abundance || {};
+    if (Object.keys(ab).length > 0) {
+        abundanceHtml = '<div class="info-grid">';
+        if (ab.crust !== undefined) abundanceHtml += `<div class="info-item"><span class="label">پوسته زمین (ppm)</span><span class="value">${ab.crust}</span></div>`;
+        if (ab.sea !== undefined) abundanceHtml += `<div class="info-item"><span class="label">آب دریا (ppm)</span><span class="value">${ab.sea}</span></div>`;
+        if (ab.universe !== undefined) abundanceHtml += `<div class="info-item"><span class="label">جهان (%)</span><span class="value">${ab.universe}</span></div>`;
+        abundanceHtml += '</div>';
+    } else {
+        abundanceHtml = '<p style="color:#9aa0b5;">داده فراوانی در دسترس نیست (عنصر مصنوعی/ردیابی)</p>';
+    }
+
+    modalBody.innerHTML = `
+        <div class="modal-header">
+            <div class="modal-symbol-box" style="background: ${getCategoryColor(el.category)}22; border: 2px solid ${getCategoryColor(el.category)};">
+                <span class="big-number">${el.number}</span>
+                <span class="big-symbol">${el.symbol}</span>
+            </div>
+            <div class="modal-title">
+                <h2>${el.nameFa || el.name} (${el.name})</h2>
+                <div class="atomic-mass">جرم اتمی: ${el.mass} u</div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>اطلاعات پایه</h3>
+            <div class="info-grid">
+                <div class="info-item"><span class="label">عدد اتمی</span><span class="value">${el.number}</span></div>
+                <div class="info-item"><span class="label">جرم اتمی</span><span class="value">${el.mass} u</span></div>
+                <div class="info-item"><span class="label">دسته‌بندی</span><span class="value">${translateCategory(el.category)}</span></div>
+                <div class="info-item"><span class="label">گروه</span><span class="value">${el.group}</span></div>
+                <div class="info-item"><span class="label">دوره</span><span class="value">${el.period}</span></div>
+                <div class="info-item"><span class="label">بلوک</span><span class="value">${el.block}</span></div>
+                <div class="info-item"><span class="label">حالت استاندارد</span><span class="value">${translatePhase(el.phase)}</span></div>
+                <div class="info-item"><span class="label">الکترونگاتیوی</span><span class="value">${el.electronegativity || '—'}</span></div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>خواص فیزیکی</h3>
+            <div class="info-grid">
+                <div class="info-item"><span class="label">چگالی (g/cm³)</span><span class="value">${el.density || '—'}</span></div>
+                <div class="info-item"><span class="label">نقطه ذوب (K)</span><span class="value">${el.meltingPoint || '—'}</span></div>
+                <div class="info-item"><span class="label">نقطه جوش (K)</span><span class="value">${el.boilingPoint || '—'}</span></div>
+                <div class="info-item"><span class="label">آرایش الکترونی</span><span class="value">${el.electronConfig || '—'}</span></div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>فراوانی طبیعی</h3>
+            ${abundanceHtml}
+        </div>
+
+        <div class="info-section">
+            <h3>ایزوتوپ‌ها و فراوانی</h3>
+            <table class="isotope-table">
+                <thead>
+                    <tr>
+                        <th>ایزوتوپ</th>
+                        <th>عدد جرمی</th>
+                        <th>فراوانی</th>
+                        <th>نمودار</th>
+                    </tr>
+                </thead>
+                <tbody>${isotopeRows}</tbody>
+            </table>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+}
+
+function getCategoryColor(cat) {
+    const colors = {
+        'nonmetal': '#00d4ff', 'noble-gas': '#9b59b6',
+        'alkali-metal': '#e74c3c', 'alkaline-earth-metal': '#e67e22',
+        'metalloid': '#f1c40f', 'halogen': '#2ecc71',
+        'transition-metal': '#3498db', 'post-transition-metal': '#1abc9c',
+        'lanthanide': '#ff6b81', 'actinide': '#ff9f43',
+        'unknown': '#95a5a6'
+    };
+    return colors[cat] || '#95a5a6';
+}
+
+function translateCategory(cat) {
+    const map = {
+        'nonmetal': 'نافلز', 'noble-gas': 'گاز نجیب',
+        'alkali-metal': 'فلز قلیایی', 'alkaline-earth-metal': 'فلز قلیایی خاکی',
+        'metalloid': 'شبه‌فلز', 'halogen': 'هالوژن',
+        'transition-metal': 'فلز واسطه', 'post-transition-metal': 'فلز پس‌واسطه',
+        'lanthanide': 'لانتانید', 'actinide': 'اکتینید', 'unknown': 'نامشخص'
+    };
+    return map[cat] || cat;
+}
+
+function translatePhase(phase) {
+    const map = { 'solid': 'جامد', 'liquid': 'مایع', 'gas': 'گاز' };
+    return map[phase] || phase;
+}
+
+function closeModal() {
+    document.getElementById('modal').classList.add('hidden');
+}
+
+document.getElementById('modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+
+document.getElementById('searchInput').addEventListener('input', function(e) {
+    const query = e.target.value.trim().toLowerCase();
+    const cards = document.querySelectorAll('.element-card');
+
+    cards.forEach(card => {
+        const symbol = card.querySelector('.symbol').textContent.toLowerCase();
+        const name = card.querySelector('.name').textContent.toLowerCase();
+        const number = card.querySelector('.atomic-number').textContent;
+
+        if (query === '' || symbol.includes(query) || name.includes(query) || number.includes(query)) {
+            card.style.opacity = '1';
+            card.style.pointerEvents = 'auto';
+        } else {
+            card.style.opacity = '0.15';
+            card.style.pointerEvents = 'none';
+        }
+    });
+});
+
+renderPeriodicTable();
+</script>
+
+</body>
+</html>
